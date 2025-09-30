@@ -1,45 +1,96 @@
 # PowerShell OpenAPI Wrapper Generator
 
-> **Automatically generate professional PowerShell modules from OpenAPI 3.0.1+ specifications**
+> **Automatically generate professional PowerShell modules from OpenAPI/Swagger specifications**
 
-Transform any OpenAPI specification into a fully-featured PowerShell module with idiomatic function names, comprehensive parameter validation, and built-in help documentation.
+Transform any OpenAPI specification into a fully-featured PowerShell module with idiomatic function names, comprehensive parameter validation, and built-in help documentation. Now with support for large enterprise APIs!
 
 ## 🚀 Quick Start
 
+### Option 1: Interactive Wizard (Recommended)
 ```powershell
-# Generate a module from your OpenAPI spec
-.\Module-GEN-Parser-CLEAN.ps1 -SpecPath .\your-api-spec.yaml -OutDir .\modules
+# Start the interactive setup wizard
+.\New-PowerShellAPIWrapper.ps1
 
-# Generate comprehensive documentation
-.\Generate-README.ps1 -ModulePath .\modules\YourAPI\YourAPI.psm1 -SpecPath .\your-api-spec.yaml
+# Follow the guided setup:
+# 1. Select OpenAPI file (or choose from examples)
+# 2. Enter module name
+# 3. Choose output directory
+# 4. Select enhancements
+# 5. Generate!
+```
 
-# Use your generated module
-Import-Module .\modules\YourAPI\YourAPI.psd1
-Get-Help Get-Users -Full
-$users = Get-UsersList -X_TOKEN "your-api-token"
+### Option 2: Quick Generator (Immediate Results)
+```powershell
+# Generate a module instantly from any OpenAPI spec
+.\Quick-Generator.ps1 -OpenAPIPath ".\examples\swagger.json" -OutputPath ".\MyModule" -ModuleName "PetStoreAPI"
+
+# Import and use immediately
+Import-Module ".\MyModule\PetStoreAPI.psd1"
+Get-Command -Module PetStoreAPI
+```
+
+### Option 3: Advanced Generation
+```powershell
+# Generate with specific enhancements
+.\New-PowerShellAPIWrapper.ps1 -OpenAPIPath ".\examples\swagger.json" -OutputPath ".\MyModule" -ModuleName "PetStoreAPI" -IncludeEnhancements @("VerbMapping", "ErrorHandling") -GenerateReadme
 ```
 
 ## ✨ Key Features
 
 | Feature | Description |
 |---------|-------------|
-| 🎯 **PowerShell-Idiomatic** | `Get-Users`, `New-Order`, `Set-Profile` instead of generic `Invoke-*` |
+| 🎯 **PowerShell-Idiomatic** | `Get-Pet`, `New-Pet`, `Set-Pet` instead of generic `Invoke-*` |
 | 📚 **Rich Documentation** | Complete comment-based help from OpenAPI descriptions |
-| 🔒 **Type Safety** | Parameter validation, enums, and type checking from schemas |
+| 🔒 **Type Safety** | Parameter validation and type checking from schemas |
 | 🌐 **Universal Format** | Supports both YAML and JSON OpenAPI specifications |
 | 🛡️ **Secure Parameters** | Converts OpenAPI parameters to PowerShell-safe names |
-| 🔑 **Built-in Auth** | X-TOKEN header authentication with configurable base URLs |
-| 📖 **Auto Documentation** | Generates professional README.md with examples |
+| 🧙‍♂️ **Interactive Wizard** | Guided setup process for easy configuration |
+| ⚡ **Enterprise Scale** | Handles large APIs with 300+ functions efficiently |
+| 🗂️ **Modular Structure** | Automatically creates modular structure for large APIs |
+| 🎛️ **Enhancement System** | Optional advanced features (verb mapping, error handling, etc.) |
+
+## 🏗️ Project Structure
+
+```
+PowerShell-OpenAPI-Wrapper/
+├── 🚀 New-PowerShellAPIWrapper.ps1     # Main entry point with interactive wizard
+├── ⚡ Quick-Generator.ps1              # Fast, simple generator (works immediately)
+├── 📄 README.md                        # This documentation
+├── 📂 src/                             # Source code modules
+│   ├── 📂 Core/                        # Core functionality
+│   │   ├── OpenAPIParser.ps1           # OpenAPI specification parser
+│   │   ├── ModuleGenerator.ps1         # Module generation logic
+│   │   ├── ReadmeGenerator.ps1         # README generator
+│   │   └── UtilityFunctions.ps1        # Common utilities
+│   └── � Enhancements/                # Optional advanced features
+│       ├── VerbMappingEnhancement.ps1  # Enhanced PowerShell verb mapping
+│       ├── ParameterEnhancement.ps1    # Advanced parameter handling
+│       ├── ErrorHandlingEnhancement.ps1 # Enterprise error handling
+│       └── TypeSystemEnhancement.ps1   # Strong typing system
+├── 📂 examples/                        # Example OpenAPI specifications
+│   ├── swagger.json                    # Petstore API example
+│   └── swagger.yaml                    # YAML format example
+└── 📂 docs/                           # Documentation and guides
+```
 
 ## 📁 What You Get
 
-Every generated module includes:
-
+### Small APIs (≤50 functions):
 ```
-YourAPI/
-├── YourAPI.psd1          # PowerShell module manifest
-├── YourAPI.psm1          # Generated wrapper functions
-└── README.md             # Complete documentation with examples
+MyModule/
+├── MyModule.psd1          # PowerShell module manifest
+└── MyModule.psm1          # All functions in one file
+```
+
+### Large APIs (>50 functions):
+```
+MyModule/
+├── MyModule.psd1          # PowerShell module manifest
+├── MyModule.psm1          # Main module file (imports functions)
+└── Functions/             # Individual function files
+    ├── Get-Users.ps1
+    ├── New-Users.ps1
+    └── ... (300+ more functions)
 ```
 
 ## 🛠️ Generated Function Examples
@@ -48,128 +99,104 @@ The generator creates PowerShell functions following standard verb conventions:
 
 | OpenAPI Endpoint | Generated PowerShell Function |
 |------------------|------------------------------|
-| `GET /api/users` | `Get-UsersList` |
-| `GET /api/users/{id}` | `Get-Users` |
-| `POST /api/users` | `New-Users` |
-| `PUT /api/users/{id}` | `Set-Users` |
-| `DELETE /api/users/{id}` | `Remove-Users` |
+| `GET /pets` | `Get-findPetsByStatus` |
+| `GET /pets/{id}` | `Get-PetById` |
+| `POST /pets` | `New-addPet` |
+| `PUT /pets/{id}` | `Set-updatePet` |
+| `DELETE /pets/{id}` | `Remove-Pet` |
 
 ### Real-World Usage Example
 
 ```powershell
 # Import your generated module
-Import-Module .\modules\CompanyAPI\CompanyAPI.psd1
+Import-Module ".\MyModule\PetStoreAPI.psd1"
 
-# List all users with filtering
-$users = Get-UsersList -BaseUrl "https://api.company.com" `
-    -X_TOKEN $apiToken `
-    -department "Engineering" `
-    -active $true `
-    -limit 50
+# List available functions
+Get-Command -Module PetStoreAPI
 
-# Get specific user details
-$user = Get-Users -id 123 -X_TOKEN $apiToken -fields @("name", "email", "department")
+# Get help for any function
+Get-Help Get-findPetsByStatus -Full
 
-# Create a new user
-$newUser = New-Users -X_TOKEN $apiToken -Body @{
-    name = "John Doe"
-    email = "john.doe@company.com"
-    department = "Engineering"
-    role = "Developer"
-}
+# Use the API functions
+$pets = Get-findPetsByStatus -BaseUri "https://petstore.swagger.io/v2"
+$inventory = Get-Inventory -BaseUri "https://petstore.swagger.io/v2"
 
-# Update user information
-Set-Users -id 123 -X_TOKEN $apiToken -Body @{
-    department = "Senior Engineering"
-    role = "Lead Developer"
-}
+# For large APIs, use selective imports for better performance
+Import-Module ".\LargeModule\HeraAPI.psd1" -Function 'Get-*'
 ```
 
 ## 📋 Requirements
 
-- **PowerShell 7.0+** *(recommended - includes built-in YAML support)*
-- **PowerShell 5.1+** with `powershell-yaml` module *(alternative)*
+- **PowerShell 5.1+** (Windows PowerShell or PowerShell Core)
+- **YAML Support** (optional, for YAML specifications):
+  - PowerShell 7.0+ has built-in YAML support
+  - PowerShell 5.1 requires `powershell-yaml` module
 
 ### YAML Support Installation
 
 ```powershell
 # For PowerShell 5.1 users
 Install-Module -Name powershell-yaml -Scope CurrentUser
-
-# Or use auto-installation flag
-.\Module-GEN-Parser-CLEAN.ps1 -SpecPath .\spec.yaml -AutoInstallYamlModule
 ```
 
-## 🔧 Core Scripts
+## 🎯 Available Enhancements
 
-| Script | Purpose | Usage |
-|--------|---------|-------|
-| `Module-GEN-Parser-CLEAN.ps1` | **Main generator** | Creates PowerShell modules from OpenAPI specs |
-| `Generate-README.ps1` | **Documentation generator** | Creates comprehensive README for modules |
+| Enhancement | Description | Status |
+|-------------|-------------|--------|
+| **VerbMapping** | Enhanced PowerShell verb mapping based on Microsoft PSSwagger | ✅ Available |
+| **ParameterFlattening** | Advanced parameter handling and flattening | � In Development |
+| **ErrorHandling** | Enterprise-grade error handling with retry logic | 🚧 In Development |
+| **TypeSystem** | Strong typing with custom PowerShell classes | 🚧 In Development |
 
-## 📚 Complete Workflow
-
-### 1. Generate Your Module
-
-```powershell
-# From YAML specification
-.\Module-GEN-Parser-CLEAN.ps1 -SpecPath .\petstore.yaml -OutDir .\generated
-
-# From JSON specification  
-.\Module-GEN-Parser-CLEAN.ps1 -SpecPath .\swagger.json -OutDir .\generated
-```
-
-### 2. Generate Documentation
-
-```powershell
-.\Generate-README.ps1 -ModulePath .\generated\Petstore\Petstore.psm1 -SpecPath .\petstore.yaml
-```
-
-### 3. Use Your Module
-
-```powershell
-Import-Module .\generated\Petstore\Petstore.psd1
-
-# Get comprehensive help
-Get-Help Get-Pets -Full
-
-# Use the API
-$pets = Get-PetsList -X_TOKEN "your-token" -status "available"
-```
-
-## 🎯 Advanced Features
-
-### Built-in Error Handling
-```powershell
-# Throw exceptions on errors (default)
-$result = Get-Users -id 999 -X_TOKEN $token
-
-# Return $null on errors instead of throwing
-$result = Get-Users -id 999 -X_TOKEN $token -NoThrow
-```
-
-### Flexible Base URL Configuration
-```powershell
-# Use default base URL from spec
-Get-Users -id 123 -X_TOKEN $token
-
-# Override base URL per call
-Get-Users -id 123 -X_TOKEN $token -BaseUrl "https://staging-api.company.com"
-```
-
-### Comprehensive Parameter Validation
-```powershell
-# Automatic validation from OpenAPI schema
-Get-UsersList -status "active"        # ✅ Valid enum value
-Get-UsersList -status "invalid"       # ❌ Validation error
-Get-UsersList -limit 50               # ✅ Valid integer
-Get-UsersList -limit "not-a-number"   # ❌ Type error
-```
-
-## 📊 Proven Track Record
+## 📊 Tested APIs
 
 Successfully tested with:
-- **swagger example spec** (YAML & JSON)
+
+| API | Functions | Complexity | Structure |
+|-----|-----------|------------|-----------|
+| **Swagger Petstore** | 20 functions | Simple | Single file |
+| **SEPPmail Cloud API (Hera)** | 309 functions | Complex | Modular structure |
+| **Custom APIs** | Various | Various | Auto-detected |
+
+## 🚀 Advanced Usage
+
+### Large API Performance Tips
+
+```powershell
+# For APIs with 100+ functions, use selective imports
+Import-Module ".\MyLargeAPI\API.psd1" -Function 'Get-*'
+
+# Check function count
+Get-Command -Module MyAPI | Measure-Object
+
+# Get statistics about your generated module
+Get-Command -Module MyAPI | Group-Object { ($_.Name -split '-')[0] }
+```
+
+### Batch Generation
+
+```powershell
+# Generate multiple modules from different specs
+$specs = Get-ChildItem ".\specs\" -Filter "*.json"
+foreach ($spec in $specs) {
+    $moduleName = $spec.BaseName + "API"
+    .\Quick-Generator.ps1 -OpenAPIPath $spec.FullName -OutputPath ".\modules\$moduleName" -ModuleName $moduleName
+}
+```
+
+## 🛠️ Development & Customization
+
+### Adding New Enhancements
+
+1. Create your enhancement in `src\Enhancements\`
+2. Follow the existing pattern from `VerbMappingEnhancement.ps1`
+3. Add it to the enhancement map in `New-PowerShellAPIWrapper.ps1`
+
+### Extending the Core
+
+- **Core modules** in `src\Core\` provide basic functionality
+- **Enhancements** in `src\Enhancements\` add optional features
+- **Examples** in `examples\` for testing and demonstration
 
 ## 🛠️ Troubleshooting
 
@@ -177,34 +204,53 @@ Successfully tested with:
 
 **YAML parsing errors:**
 ```powershell
-# Ensure you have YAML support
+# Check YAML support
 Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue
 
-# Install if missing
+# Install if missing (PowerShell 5.1)
 Install-Module powershell-yaml -Scope CurrentUser
 ```
 
-**Too many parameters:**
-The generator limits query parameters to 20 per function to maintain usability. For complex APIs, you can modify the limit in the source code.
-
-**Module import issues:**
+**Large API performance:**
 ```powershell
-# Ensure paths are correct
-Test-Path .\generated\YourAPI\YourAPI.psd1
+# Use modular imports for large APIs
+Import-Module ".\MyAPI\API.psd1" -Function 'Get-Users*'
 
-# Import with full path
-Import-Module (Resolve-Path .\generated\YourAPI\YourAPI.psd1)
+# Check if modular structure was used
+Test-Path ".\MyAPI\Functions\"
 ```
+
+**Interactive wizard issues:**
+```powershell
+# Run Quick-Generator directly if wizard fails
+.\Quick-Generator.ps1 -OpenAPIPath ".\examples\swagger.json" -OutputPath ".\test" -ModuleName "TestAPI"
+```
+
+## 🎯 Roadmap
+
+- ✅ **Interactive Wizard** - Completed
+- ✅ **Large API Support** - Completed  
+- ✅ **Modular Architecture** - Completed
+- 🚧 **Enhanced Error Handling** - In Progress
+- 🚧 **Parameter Validation** - In Progress
+- 🚧 **Type System Enhancement** - In Progress
+- 📋 **Authentication Schemes** - Planned
+- 📋 **Response Validation** - Planned
+- 📋 **Testing Framework** - Planned
 
 ## 🤝 Contributing
 
 We welcome contributions! Areas of interest:
 
 - **Authentication Schemes**: OAuth2, JWT, API Key detection
-- **Response Validation**: Schema-based response validation
+- **Response Validation**: Schema-based response validation  
 - **Testing Framework**: Automated Pester tests for generated functions
-- **Advanced Features**: Pipeline support, bulk operations
+- **Enhanced Parameter Handling**: Complex parameter flattening
 
 ## 📜 License
 
 MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+⭐ **Star this repository if you find it useful!** ⭐
