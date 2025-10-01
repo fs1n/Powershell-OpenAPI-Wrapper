@@ -1,4 +1,3 @@
-# Type System Enhancement based on PSSwagger patterns
 # Add to Module-GEN-Parser-CLEAN.ps1
 
 function New-EnhancedTypeSystem {

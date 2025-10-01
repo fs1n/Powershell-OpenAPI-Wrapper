@@ -1,4 +1,3 @@
-# Enhanced Error Handling based on PSSwagger patterns
 # Add to Module-GEN-Parser-CLEAN.ps1
 
 function New-EnhancedErrorHandling {

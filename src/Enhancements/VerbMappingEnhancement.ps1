@@ -1,4 +1,3 @@
-# Enhanced Verb Mapping based on PSSwagger learnings
 # Add to Module-GEN-Parser-CLEAN.ps1
 
 $script:EnhancedVerbMap = @{

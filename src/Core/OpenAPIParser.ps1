@@ -29,59 +29,94 @@ function Import-OpenAPISpecification {
         
         switch ($extension) {
             '.json' {
-                $spec = $content | ConvertFrom-Json
+                Write-Verbose "Parsing JSON specification"
+                $spec = $content | ConvertFrom-Json -Depth 200
             }
-            {$_ -in @('.yaml', '.yml')} {
-                # For YAML parsing, we'll use a simple approach
-                # In production, you might want to use a proper YAML parser
-                if (Get-Command ConvertFrom-Yaml -ErrorAction SilentlyContinue) {
-                    $spec = $content | ConvertFrom-Yaml
-                } else {
-                    throw "YAML parsing requires PowerShell-Yaml module. Please install it with: Install-Module PowerShell-Yaml"
+            {$_ -in '.yaml', '.yml'} {
+                Write-Verbose "Parsing YAML specification"
+                if (-not (Get-Command -Name ConvertFrom-Yaml -ErrorAction SilentlyContinue)) {
+                    if (Get-Module -ListAvailable -Name powershell-yaml) {
+                        Import-Module powershell-yaml -ErrorAction Stop
+                    } else {
+                        throw "ConvertFrom-Yaml not available. Please use PowerShell 7+ or install powershell-yaml module"
+                    }
                 }
+                $spec = ConvertFrom-Yaml -Yaml $content
             }
             default {
-                throw "Unsupported file format: $extension. Only JSON and YAML are supported."
+                throw "Unsupported file format: $extension. Only .json, .yaml, and .yml are supported."
             }
         }
         
-        # Validate OpenAPI structure
-        if (-not $spec.swagger -and -not $spec.openapi) {
-            throw "Invalid OpenAPI specification: Missing 'swagger' or 'openapi' field"
+        # Convert hashtable to PSCustomObject for consistent handling
+        if ($spec -is [hashtable]) {
+            $spec = Convert-HashtableToPSObject $spec
         }
         
-        # Normalize specification structure
-        $normalizedSpec = Resolve-OpenAPIReferences -Specification $spec
+        # Normalize and resolve the specification
+        $normalizedSpec = Resolve-OpenAPISpecification -Specification $spec
         
-        Write-Verbose "Successfully parsed OpenAPI specification (version: $($spec.swagger ?? $spec.openapi))"
         return $normalizedSpec
     }
     catch {
-        throw "Failed to parse OpenAPI specification: $($_.Exception.Message)"
+        Write-Error "Failed to parse OpenAPI specification: $($_.Exception.Message)"
+        throw
     }
 }
 
-function Resolve-OpenAPIReferences {
+function Convert-HashtableToPSObject {
+    param([hashtable]$InputObject)
+    
+    $psObject = New-Object PSCustomObject
+    
+    foreach ($key in $InputObject.Keys) {
+        $value = $InputObject[$key]
+        
+        # Recursively convert nested hashtables
+        if ($value -is [hashtable]) {
+            $value = Convert-HashtableToPSObject $value
+        }
+        elseif ($value -is [System.Collections.IEnumerable] -and $value -isnot [string]) {
+            # Handle arrays of hashtables
+            $convertedArray = @()
+            foreach ($item in $value) {
+                if ($item -is [hashtable]) {
+                    $convertedArray += Convert-HashtableToPSObject $item
+                } else {
+                    $convertedArray += $item
+                }
+            }
+            $value = $convertedArray
+        }
+        
+        $psObject | Add-Member -NotePropertyName $key -NotePropertyValue $value
+    }
+    
+    return $psObject
+}
+
+function Resolve-OpenAPISpecification {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory = $true)]
         [object]$Specification
     )
     
-    Write-Verbose "Resolving OpenAPI references..."
-    
+    # Resolve definitions from different OpenAPI versions
     $definitions = @{}
     
-    # Handle Swagger 2.0 definitions
-    if ($Specification.definitions) {
-        Write-Verbose "Found Swagger 2.0 definitions"
-        $definitions = $Specification.definitions
+    # OpenAPI 3.x uses components/schemas
+    if ($Specification.components -and $Specification.components.schemas) {
+        foreach ($key in $Specification.components.schemas.PSObject.Properties.Name) {
+            $definitions[$key] = $Specification.components.schemas.$key
+        }
     }
     
-    # Handle OpenAPI 3.0 components/schemas
-    if ($Specification.components -and $Specification.components.schemas) {
-        Write-Verbose "Found OpenAPI 3.0 components/schemas"
-        $definitions = $Specification.components.schemas
+    # OpenAPI 2.x uses definitions
+    if ($Specification.definitions) {
+        foreach ($key in $Specification.definitions.PSObject.Properties.Name) {
+            $definitions[$key] = $Specification.definitions.$key
+        }
     }
     
     # Add resolved definitions to the specification
@@ -112,7 +147,12 @@ function Get-OpenAPIDefinitions {
         [object]$Specification
     )
     
-    return $Specification._resolvedDefinitions ?? @{}
+    # Handle both PSObject and hashtable access
+    if ($Specification -is [hashtable]) {
+        return if ($Specification.ContainsKey('_resolvedDefinitions')) { $Specification['_resolvedDefinitions'] } else { @{} }
+    } else {
+        return if ($Specification._resolvedDefinitions) { $Specification._resolvedDefinitions } else { @{} }
+    }
 }
 
 function Get-OpenAPIInfo {
@@ -122,9 +162,18 @@ function Get-OpenAPIInfo {
         [object]$Specification
     )
     
-    return $Specification.info ?? @{
-        title = "Generated API"
-        version = "1.0.0"
-        description = "PowerShell module generated from OpenAPI specification"
+    # Handle both PSObject and hashtable access
+    if ($Specification -is [hashtable]) {
+        return if ($Specification.ContainsKey('info')) { $Specification['info'] } else { @{
+            title = "Generated API"
+            version = "1.0.0"
+            description = "PowerShell module generated from OpenAPI specification"
+        }}
+    } else {
+        return if ($Specification.info) { $Specification.info } else { @{
+            title = "Generated API"
+            version = "1.0.0"
+            description = "PowerShell module generated from OpenAPI specification"
+        }}
     }
 }
