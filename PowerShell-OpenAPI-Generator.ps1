@@ -10,7 +10,24 @@
     Path to the OpenAPI specification file (JSON or YAML)
 
 .PARAMETER OutputPath
-    Directory where the generated PowerShell module will be created
+    Directory where the generated PowerShell module will be    $uri = "`$BaseUri$PathName"
+    `$method = '$($HttpMethod.ToUpper())'
+    
+    try {
+        # Process path parameters
+        $pathParams = @($operationParameters | Where-Object { $_.In -eq 'path' })
+        if ($pathParams.Count -gt 0) {
+            $pathParams | ForEach-Object {
+                $varName = "api_$($_.Name -replace '\W', '_')"
+                $functionBody += "`n        `$uri = `$uri.Replace(`"{$($_.Name)}`", `$$varName)"
+            }
+        }
+        
+        `$params = @{
+            Uri = `$uri
+            Method = `$method
+            Headers = `$Headers
+        }
 
 .PARAMETER ModuleName
     Name for the generated PowerShell module
@@ -344,23 +361,27 @@ function Get-OpenAPIParameters {
                 $paramIn = ConvertTo-SafeProperty -Object $param -PropertyName 'in' -DefaultValue 'query'
             }
             
-            if ($paramName -and $paramIn -eq 'query') {
-                # Convert OpenAPI types to PowerShell types
-                $psType = switch ($paramType) {
-                    'integer' { 'int' }
-                    'number' { 'double' }
-                    'boolean' { 'bool' }
-                    'array' { 'string[]' }
-                    default { 'string' }
-                }
-                
-                $parameters += @{
-                    Name = $paramName
-                    Type = $psType
-                    Required = $isRequired
-                    Description = $description
-                    In = $paramIn
-                }
+            # Add parameters regardless of type (path or query)
+            # Convert OpenAPI types to PowerShell types
+            $psType = switch ($paramType) {
+                'integer' { 'int' }
+                'number' { 'double' }
+                'boolean' { 'bool' }
+                'array' { 'string[]' }
+                default { 'string' }
+            }
+            
+            # Path parameters should always be required
+            if ($paramIn -eq 'path') {
+                $isRequired = $true
+            }
+            
+            $parameters += @{
+                Name = $paramName
+                Type = $psType
+                Required = $isRequired
+                Description = $description
+                In = $paramIn
             }
         }
     }
@@ -394,16 +415,33 @@ function New-UniversalFunction {
     $summary = ConvertTo-SafeProperty -Object $Operation -PropertyName 'summary' -DefaultValue "Executes $HttpMethod $PathName"
     $description = ConvertTo-SafeProperty -Object $Operation -PropertyName 'description' -DefaultValue $summary
     
+    # Get operation parameters with path parameters included
+    $operationParameters = Get-OpenAPIParameters -Operation $Operation -PathItem $PathItem -Specification $Specification -Level $Level
+    
     # Base parameters for all levels
     $parameterDefinitions = @(
         "[Parameter(Mandatory = `$true)]`n        [string]`$BaseUri"
     )
+    
+    # Add path parameters as mandatory first (they will be removed from operationParameters later)
+    $pathParams = @($operationParameters | Where-Object { $_.In -eq 'path' })
+    
+    # Add path parameters directly to parameterDefinitions
+    if ($pathParams.Count -gt 0) {
+        foreach ($param in $pathParams) {
+            $parameterDefinitions += @(
+                "[Parameter(Mandatory = `$true)]`n        [string]`$$($param.Name)"
+            )
+        }
+    }
     
     $functionBody = @"
     `$uri = "`$BaseUri$PathName"
     `$method = '$($HttpMethod.ToUpper())'
     
     try {
+        # Process path parameters
+$($pathParams | ForEach-Object { "        `$uri = `$uri.Replace(`"{$($_.Name)}`", `$$($_.Name))" } | Out-String)
         `$params = @{
             Uri = `$uri
             Method = `$method
@@ -429,11 +467,11 @@ function New-UniversalFunction {
             $parameterDefinitions += "[Parameter()]`n        [int]`$TimeoutSec = 30"
             $parameterDefinitions += "[Parameter()]`n        [hashtable]`$Body = @{}"
             
-            # Add operation-specific parameters
-            $operationParams = Get-OpenAPIParameters -Operation $Operation -PathItem $PathItem -Specification $Specification -Level $Level
-            foreach ($param in $operationParams) {
+            # Add operation-specific parameters (excluding path parameters which were already added)
+            # Filter out parameters that are path parameters to avoid duplicates
+            $queryParams = @($operationParameters | Where-Object { $_.In -eq 'query' })
+            foreach ($param in $queryParams) {
                 $mandatory = if ($param.Required) { "Mandatory = `$true" } else { "" }
-                $helpText = $param.Description -replace "'", "''"
                 $cleanParamName = $param.Name -replace '[^a-zA-Z0-9]', '_'
                 $parameterDefinitions += "[Parameter($mandatory)]`n        [$($param.Type)]`$$cleanParamName"
             }
@@ -442,10 +480,10 @@ function New-UniversalFunction {
             $functionBody += "`n        if (`$Body.Count -gt 0) { `$params.Body = (`$Body | ConvertTo-Json -Depth 10) }"
             
             # Add query parameter handling
-            if ($operationParams.Count -gt 0) {
+            if ($queryParams.Count -gt 0) {
                 $functionBody += "`n        # Add query parameters"
                 $functionBody += "`n        `$queryParams = @()"
-                foreach ($param in $operationParams) {
+                foreach ($param in $queryParams) {
                     $cleanParamVar = $param.Name -replace '[^a-zA-Z0-9]', '_'
                     $functionBody += "`n        if (`$PSBoundParameters.ContainsKey('$cleanParamVar')) { `$queryParams += '$($param.Name)=' + [System.Web.HttpUtility]::UrlEncode(`$$cleanParamVar) }"
                 }
@@ -460,11 +498,11 @@ function New-UniversalFunction {
             $parameterDefinitions += "[Parameter()]`n        [switch]`$PassThru"
             $parameterDefinitions += "[Parameter()]`n        [ValidateSet('Default', 'Ignore', 'Retry')]`n        [string]`$ErrorHandling = 'Default'"
             
-            # Add operation-specific parameters
-            $operationParams = Get-OpenAPIParameters -Operation $Operation -PathItem $PathItem -Specification $Specification -Level $Level
-            foreach ($param in $operationParams) {
+            # Add operation-specific parameters (excluding path parameters which were already added)
+            # Filter out parameters that are path parameters to avoid duplicates
+            $queryParams = @($operationParameters | Where-Object { $_.In -eq 'query' })
+            foreach ($param in $queryParams) {
                 $mandatory = if ($param.Required) { "Mandatory = `$true" } else { "" }
-                $helpText = $param.Description -replace "'", "''"
                 $cleanParamName = $param.Name -replace '[^a-zA-Z0-9]', '_'
                 $parameterDefinitions += "[Parameter($mandatory)]`n        [$($param.Type)]`$$cleanParamName"
             }
@@ -478,8 +516,8 @@ function New-UniversalFunction {
         `$queryParams = @()
 "@
             
-            if ($operationParams.Count -gt 0) {
-                foreach ($param in $operationParams) {
+            if ($queryParams.Count -gt 0) {
+                foreach ($param in $queryParams) {
                     $cleanParamVar = $param.Name -replace '[^a-zA-Z0-9]', '_'
                     $functionBody += "`n        if (`$PSBoundParameters.ContainsKey('$cleanParamVar')) { `$queryParams += '$($param.Name)=' + [System.Web.HttpUtility]::UrlEncode(`$$cleanParamVar) }"
                 }
