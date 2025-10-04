@@ -4,7 +4,7 @@
 
 Transform any OpenAPI specification into a fully-featured Powershell API Wrapper module!
 
-| Featu## 🎯 Universal Architecture Features
+| Implemented Features:
 
 | Feature | Status | Description |
 |---------|--------|-------------|
