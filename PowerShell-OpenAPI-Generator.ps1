@@ -825,7 +825,7 @@ Export-ModuleMember -Function @($($moduleResult.Functions | ForEach-Object { "'$
     PrivateData = @{
         PSData = @{
             Tags = @('OpenAPI', 'REST', 'API', '$EnhancementLevel')
-            ProjectUri = 'https://github.com/PowerShell-OpenAPI-Generator'
+            ProjectUri = 'https://github.com/fs1n/PowerShell-OpenAPI-Generator'
         }
     }
 }
